@@ -40,28 +40,26 @@ public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TReques
         if (failures.Count != 0)
         {
             var errorMessage = string.Join("; ", failures.Select(f => f.ErrorMessage));
-            
-            // Create failure result using reflection to handle both Result and Result<T>
-            return CreateFailureResult<TResponse>(errorMessage);
+            return CreateFailureResult(errorMessage);
         }
 
         return await next();
     }
 
-    private static TResponse CreateFailureResult<T>(string error) where T : Result
+    private static TResponse CreateFailureResult(string error)
     {
         // Handle Result<TValue> generic type
-        if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(Result<>))
+        if (typeof(TResponse).IsGenericType && typeof(TResponse).GetGenericTypeDefinition() == typeof(Result<>))
         {
-            var valueType = typeof(T).GetGenericArguments()[0];
+            var valueType = typeof(TResponse).GetGenericArguments()[0];
             var failureMethod = typeof(Result)
                 .GetMethod(nameof(Result.Failure), new[] { typeof(string) })!
                 .MakeGenericMethod(valueType);
             
-            return (T)failureMethod.Invoke(null, new object[] { error })!;
+            return (TResponse)failureMethod.Invoke(null, new object[] { error })!;
         }
 
         // Handle non-generic Result
-        return (T)(object)Result.Failure(error);
+        return (TResponse)(object)Result.Failure(error);
     }
 }
