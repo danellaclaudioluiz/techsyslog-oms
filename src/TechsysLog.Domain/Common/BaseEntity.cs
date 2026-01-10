@@ -15,11 +15,8 @@ public abstract class BaseEntity
     public DateTime? DeletedAt { get; private set; }
     public string? DeletedBy { get; private set; }
 
-    public void MarkAsDeleted(string deletedBy)
+    public void MarkAsDeleted(string? deletedBy)
     {
-        if (string.IsNullOrWhiteSpace(deletedBy))
-            throw new ArgumentException("DeletedBy is required.", nameof(deletedBy));
-
         IsDeleted = true;
         DeletedAt = DateTime.UtcNow;
         DeletedBy = deletedBy;
@@ -32,7 +29,7 @@ public abstract class BaseEntity
         DeletedBy = null;
     }
 
-    protected void SetUpdated()
+    public void SetUpdated()
     {
         UpdatedAt = DateTime.UtcNow;
     }
