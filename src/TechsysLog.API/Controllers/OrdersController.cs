@@ -27,16 +27,20 @@ public class OrdersController : BaseController
     /// Create a new order.
     /// </summary>
     [HttpPost]
-    [Authorize(Policy = "OperatorOrAdmin")]
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse<OrderDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateOrderRequest request, CancellationToken cancellationToken)
     {
+        var targetUserId = CurrentUserRole == "Customer" 
+            ? CurrentUserId 
+            : (request.UserId ?? CurrentUserId);
+
         var command = new CreateOrderCommand
         {
             Description = request.Description,
             Value = request.Value,
-            UserId = request.UserId ?? CurrentUserId,
+            UserId = targetUserId,
             Cep = request.Cep,
             Number = request.Number,
             Complement = request.Complement

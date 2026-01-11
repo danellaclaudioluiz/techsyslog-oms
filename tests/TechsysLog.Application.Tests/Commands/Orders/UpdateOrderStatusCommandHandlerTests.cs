@@ -3,6 +3,7 @@ using FluentAssertions;
 using MediatR;
 using NSubstitute;
 using TechsysLog.Application.Commands.Orders;
+using TechsysLog.Application.Interfaces;
 using TechsysLog.Application.Mappings;
 using TechsysLog.Domain.Entities;
 using TechsysLog.Domain.Enums;
@@ -15,12 +16,14 @@ public class UpdateOrderStatusCommandHandlerTests
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
     private readonly IMediator _mediator;
     private readonly UpdateOrderStatusCommandHandler _handler;
 
     public UpdateOrderStatusCommandHandlerTests()
     {
         _orderRepository = Substitute.For<IOrderRepository>();
+        _notificationService = Substitute.For<INotificationService>();
         _mediator = Substitute.For<IMediator>();
 
         var mapperConfig = new MapperConfiguration(cfg =>
@@ -29,7 +32,7 @@ public class UpdateOrderStatusCommandHandlerTests
         });
         _mapper = mapperConfig.CreateMapper();
 
-        _handler = new UpdateOrderStatusCommandHandler(_orderRepository, _mapper, _mediator);
+        _handler = new UpdateOrderStatusCommandHandler(_orderRepository, _mapper, _notificationService, _mediator);
     }
 
     private static Order CreatePendingOrder()

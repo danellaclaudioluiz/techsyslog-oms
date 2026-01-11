@@ -13,4 +13,11 @@ public interface INotificationService
     Task SendToUserAsync(Guid userId, Notification notification, CancellationToken cancellationToken = default);
     Task SendToAllAsync(NotificationType type, string message, object? data = null, CancellationToken cancellationToken = default);
     Task SendUnreadCountAsync(Guid userId, int count, CancellationToken cancellationToken = default);
+    Task SendOrderStatusChangedAsync(
+        Guid orderId,
+        string orderNumber,
+        Guid userId,
+        OrderStatus oldStatus,
+        OrderStatus newStatus,
+        CancellationToken cancellationToken = default);
 }

@@ -70,4 +70,39 @@ public class NotificationService : INotificationService
             .Group(userId.ToString())
             .SendAsync("UnreadCount", count, cancellationToken);
     }
+
+    public async Task SendOrderStatusChangedAsync(
+        Guid orderId,
+        string orderNumber,
+        Guid userId,
+        OrderStatus oldStatus,
+        OrderStatus newStatus,
+        CancellationToken cancellationToken = default)
+    {
+        var message = new
+        {
+            OrderId = orderId.ToString(),
+            OrderNumber = orderNumber,
+            UserId = userId.ToString(),
+            OldStatus = oldStatus.ToString(),
+            NewStatus = newStatus.ToString(),
+            ChangedAt = DateTime.UtcNow
+        };
+
+        await _hubContext.Clients.All
+            .SendAsync("OrderStatusChanged", message, cancellationToken);
+
+        var notification = new
+        {
+            Id = Guid.NewGuid().ToString(),
+            Type = "OrderStatusChanged",
+            Message = $"Pedido {orderNumber} atualizado para {newStatus}",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _hubContext.Clients
+            .Group(userId.ToString())
+            .SendAsync("ReceiveNotification", notification, cancellationToken);
+
+    }
 }

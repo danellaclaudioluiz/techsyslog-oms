@@ -1,6 +1,6 @@
 using Microsoft.OpenApi.Models;
 using Serilog;
-using TechsysLog.API.Hubs;
+using TechsysLog.Infrastructure.Hubs;
 using TechsysLog.API.Middleware;
 using TechsysLog.Application;
 using TechsysLog.Infrastructure;
