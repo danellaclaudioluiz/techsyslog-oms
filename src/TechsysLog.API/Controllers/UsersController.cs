@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using TechsysLog.API.Models;
 using TechsysLog.Application.DTOs;
 using TechsysLog.Application.Queries.Users;
+using TechsysLog.Domain.Enums;
 using TechsysLog.Domain.Interfaces;
 
 namespace TechsysLog.API.Controllers;
@@ -63,6 +64,54 @@ public class UsersController : BaseController
     }
 
     /// <summary>
+    /// Update user.
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request, CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+
+        if (user is null)
+            return NotFoundResponse("User not found.");
+
+        // Update name if provided
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            var nameResult = user.UpdateName(request.Name);
+            if (nameResult.IsFailure)
+                return BadRequest(ApiResponse.Fail(nameResult.Error ?? "Failed to update name."));
+        }
+
+        // Update role if provided
+        if (!string.IsNullOrWhiteSpace(request.Role))
+        {
+            if (!Enum.TryParse<UserRole>(request.Role, true, out var role))
+                return BadRequest(ApiResponse.Fail("Invalid role."));
+
+            var roleResult = user.ChangeRole(role);
+            if (roleResult.IsFailure)
+                return BadRequest(ApiResponse.Fail(roleResult.Error ?? "Failed to update role."));
+        }
+
+        await _userRepository.UpdateAsync(user, cancellationToken);
+
+        var dto = new UserDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email.Value,
+            Role = user.Role,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
+        };
+
+        return Ok(ApiResponse<UserDto>.Ok(dto, "User updated successfully."));
+    }
+
+    /// <summary>
     /// Delete (deactivate) user.
     /// </summary>
     [HttpDelete("{id:guid}")]
@@ -79,4 +128,13 @@ public class UsersController : BaseController
 
         return Ok(ApiResponse.Ok("User deleted successfully."));
     }
+}
+
+/// <summary>
+/// Update user request model.
+/// </summary>
+public class UpdateUserRequest
+{
+    public string? Name { get; set; }
+    public string? Role { get; set; }
 }

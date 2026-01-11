@@ -197,4 +197,95 @@ public class UsersControllerTests
             r => r.DeleteAsync(user, It.IsAny<CancellationToken>()),
             Times.Once);
     }
+
+    [Fact]
+    public async Task Update_WithValidData_ShouldReturnUpdatedUser()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        var request = new UpdateUserRequest
+        {
+            Name = "Updated Name",
+            Role = "Operator"
+        };
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        _userRepositoryMock
+            .Setup(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.Update(user.Id, request, CancellationToken.None);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var response = okResult.Value.Should().BeOfType<ApiResponse<UserDto>>().Subject;
+        response.Success.Should().BeTrue();
+        response.Data!.Name.Should().Be("Updated Name");
+    }
+
+    [Fact]
+    public async Task Update_WithNonExistentUser_ShouldReturnNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new UpdateUserRequest { Name = "New Name" };
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _controller.Update(userId, request, CancellationToken.None);
+
+        // Assert
+        result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task Update_WithInvalidRole_ShouldReturnBadRequest()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        var request = new UpdateUserRequest { Role = "InvalidRole" };
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _controller.Update(user.Id, request, CancellationToken.None);
+
+        // Assert
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task Update_WithOnlyName_ShouldUpdateOnlyName()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        var originalRole = user.Role;
+        var request = new UpdateUserRequest { Name = "Only Name Update" };
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        _userRepositoryMock
+            .Setup(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.Update(user.Id, request, CancellationToken.None);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var response = okResult.Value.Should().BeOfType<ApiResponse<UserDto>>().Subject;
+        response.Data!.Name.Should().Be("Only Name Update");
+        response.Data.Role.Should().Be(originalRole);
+    }
 }

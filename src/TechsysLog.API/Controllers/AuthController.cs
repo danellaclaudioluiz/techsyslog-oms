@@ -109,6 +109,42 @@ public class AuthController : BaseController
     }
 
     /// <summary>
+    /// Refresh JWT token.
+    /// </summary>
+    [HttpPost("refresh")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RefreshToken(CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(CurrentUserId, cancellationToken);
+
+        if (user is null)
+            return UnauthorizedResponse("User not found.");
+
+        if (user.IsDeleted)
+            return UnauthorizedResponse("User account is deactivated.");
+
+        var token = _jwtService.GenerateToken(user);
+
+        var response = new LoginResponse
+        {
+            Token = token,
+            ExpiresAt = DateTime.UtcNow.AddHours(24),
+            User = new UserDto
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email.Value,
+                Role = user.Role,
+                CreatedAt = user.CreatedAt
+            }
+        };
+
+        return Ok(ApiResponse<LoginResponse>.Ok(response, "Token refreshed successfully."));
+    }
+
+    /// <summary>
     /// Get current authenticated user info.
     /// </summary>
     [HttpGet("me")]

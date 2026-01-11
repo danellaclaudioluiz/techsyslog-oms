@@ -206,4 +206,75 @@ public class AuthControllerTests
         // Assert
         result.Should().BeOfType<UnauthorizedObjectResult>();
     }
+
+    [Fact]
+    public async Task RefreshToken_WithValidUser_ShouldReturnNewToken()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = CreateTestUser();
+
+        // Setup user context
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(ClaimTypes.Email, "john@example.com"),
+            new(ClaimTypes.Role, "Customer")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = claimsPrincipal }
+        };
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        _jwtServiceMock
+            .Setup(j => j.GenerateToken(user))
+            .Returns("new-jwt-token");
+
+        // Act
+        var result = await _controller.RefreshToken(CancellationToken.None);
+
+        // Assert
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        var response = okResult.Value.Should().BeOfType<ApiResponse<LoginResponse>>().Subject;
+        response.Success.Should().BeTrue();
+        response.Data!.Token.Should().Be("new-jwt-token");
+    }
+
+    [Fact]
+    public async Task RefreshToken_WithNonExistentUser_ShouldReturnUnauthorized()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(ClaimTypes.Email, "john@example.com"),
+            new(ClaimTypes.Role, "Customer")
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = claimsPrincipal }
+        };
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _controller.RefreshToken(CancellationToken.None);
+
+        // Assert
+        result.Should().BeOfType<UnauthorizedObjectResult>();
+    }
 }
