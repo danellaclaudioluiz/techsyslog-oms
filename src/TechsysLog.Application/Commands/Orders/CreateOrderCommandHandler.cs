@@ -1,9 +1,11 @@
 using AutoMapper;
+using MediatR;
 using TechsysLog.Application.Common;
 using TechsysLog.Application.DTOs;
 using TechsysLog.Application.Interfaces;
 using TechsysLog.Domain.Common;
 using TechsysLog.Domain.Entities;
+using TechsysLog.Domain.Events;
 using TechsysLog.Domain.Interfaces;
 using TechsysLog.Domain.ValueObjects;
 
@@ -18,15 +20,18 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
     private readonly IOrderRepository _orderRepository;
     private readonly ICepService _cepService;
     private readonly IMapper _mapper;
+    private readonly IMediator _mediator;
 
     public CreateOrderCommandHandler(
         IOrderRepository orderRepository,
         ICepService cepService,
-        IMapper mapper)
+        IMapper mapper,
+        IMediator mediator)
     {
         _orderRepository = orderRepository;
         _cepService = cepService;
         _mapper = mapper;
+        _mediator = mediator;
     }
 
     public async Task<Result<OrderDto>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -72,11 +77,22 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
         if (orderResult.IsFailure)
             return Result.Failure<OrderDto>(orderResult.Error!);
 
+        var order = orderResult.Value;
+
         // Persist order
-        await _orderRepository.AddAsync(orderResult.Value, cancellationToken);
+        await _orderRepository.AddAsync(order, cancellationToken);
+
+        // Publish domain event for notifications
+        var orderCreatedEvent = new OrderCreatedEvent(
+            order.Id,
+            order.OrderNumber.Value,
+            order.UserId,
+            order.Value);
+
+        await _mediator.Publish(orderCreatedEvent, cancellationToken);
 
         // Map to DTO and return
-        var orderDto = _mapper.Map<OrderDto>(orderResult.Value);
+        var orderDto = _mapper.Map<OrderDto>(order);
         return Result.Success(orderDto);
     }
 }

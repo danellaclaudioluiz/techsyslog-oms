@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace TechsysLog.Application.Common;
 
 /// <summary>
@@ -12,7 +14,8 @@ public class PagedResult<T>
     public int Limit { get; }
     public int TotalCount { get; }
 
-    private PagedResult(IReadOnlyList<T> data, string? cursor, bool hasMore, int limit, int totalCount)
+    [JsonConstructor]
+    public PagedResult(IReadOnlyList<T> data, string? cursor, bool hasMore, int limit, int totalCount)
     {
         Data = data;
         Cursor = cursor;

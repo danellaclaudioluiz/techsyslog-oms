@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using TechsysLog.Application.Interfaces;
+using TechsysLog.Domain.Entities;
 using TechsysLog.Domain.Enums;
 using TechsysLog.Infrastructure.Hubs;
 
@@ -30,6 +31,23 @@ public class NotificationService : INotificationService
         await _hubContext.Clients
             .Group(userId.ToString())
             .SendAsync("ReceiveNotification", notification, cancellationToken);
+    }
+
+    public async Task SendToUserAsync(Guid userId, Notification notification, CancellationToken cancellationToken = default)
+    {
+        var payload = new
+        {
+            Id = notification.Id,
+            Type = notification.Type.ToString(),
+            Message = notification.Message,
+            Data = notification.Data,
+            Read = notification.Read,
+            CreatedAt = notification.CreatedAt
+        };
+
+        await _hubContext.Clients
+            .Group(userId.ToString())
+            .SendAsync("ReceiveNotification", payload, cancellationToken);
     }
 
     public async Task SendToAllAsync(NotificationType type, string message, object? data = null, CancellationToken cancellationToken = default)

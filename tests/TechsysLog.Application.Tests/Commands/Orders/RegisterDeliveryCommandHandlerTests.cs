@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using TechsysLog.Application.Commands.Deliveries;
 using TechsysLog.Application.Mappings;
@@ -15,12 +16,14 @@ public class RegisterDeliveryCommandHandlerTests
     private readonly IOrderRepository _orderRepository;
     private readonly IDeliveryRepository _deliveryRepository;
     private readonly IMapper _mapper;
+    private readonly IMediator _mediator;
     private readonly RegisterDeliveryCommandHandler _handler;
 
     public RegisterDeliveryCommandHandlerTests()
     {
         _orderRepository = Substitute.For<IOrderRepository>();
         _deliveryRepository = Substitute.For<IDeliveryRepository>();
+        _mediator = Substitute.For<IMediator>();
 
         var mapperConfig = new MapperConfiguration(cfg =>
         {
@@ -31,7 +34,8 @@ public class RegisterDeliveryCommandHandlerTests
         _handler = new RegisterDeliveryCommandHandler(
             _orderRepository,
             _deliveryRepository,
-            _mapper);
+            _mapper,
+            _mediator);
     }
 
     private static Order CreateOrderInTransit()
@@ -247,5 +251,34 @@ public class RegisterDeliveryCommandHandlerTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("DeliveredBy");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPublishOrderDeliveredEvent()
+    {
+        // Arrange
+        var order = CreateOrderInTransit();
+        var deliveredBy = Guid.NewGuid();
+
+        var command = new RegisterDeliveryCommand
+        {
+            OrderId = order.Id,
+            DeliveredBy = deliveredBy
+        };
+
+        _orderRepository.GetByIdAsync(order.Id, Arg.Any<CancellationToken>())
+            .Returns(order);
+
+        _deliveryRepository.OrderHasDeliveryAsync(order.Id, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        _deliveryRepository.AddAsync(Arg.Any<Delivery>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<Delivery>());
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _mediator.Received(1).Publish(Arg.Any<INotification>(), Arg.Any<CancellationToken>());
     }
 }

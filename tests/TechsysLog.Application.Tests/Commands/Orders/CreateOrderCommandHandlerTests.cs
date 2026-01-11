@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using TechsysLog.Application.Commands.Orders;
 using TechsysLog.Application.Interfaces;
@@ -17,12 +18,14 @@ public class CreateOrderCommandHandlerTests
     private readonly IOrderRepository _orderRepository;
     private readonly ICepService _cepService;
     private readonly IMapper _mapper;
+    private readonly IMediator _mediator;
     private readonly CreateOrderCommandHandler _handler;
 
     public CreateOrderCommandHandlerTests()
     {
         _orderRepository = Substitute.For<IOrderRepository>();
         _cepService = Substitute.For<ICepService>();
+        _mediator = Substitute.For<IMediator>();
 
         var mapperConfig = new MapperConfiguration(cfg =>
         {
@@ -33,7 +36,8 @@ public class CreateOrderCommandHandlerTests
         _handler = new CreateOrderCommandHandler(
             _orderRepository,
             _cepService,
-            _mapper);
+            _mapper,
+            _mediator);
     }
 
     private static CepAddressInfo CreateTestAddressInfo()
@@ -220,5 +224,36 @@ public class CreateOrderCommandHandlerTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("User ID");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPublishOrderCreatedEvent()
+    {
+        // Arrange
+        var command = new CreateOrderCommand
+        {
+            Description = "Test order",
+            Value = 100m,
+            Cep = "01310100",
+            Number = "1000",
+            UserId = Guid.NewGuid()
+        };
+
+        var addressInfo = CreateTestAddressInfo();
+
+        _cepService.GetAddressByCepAsync(Arg.Any<Cep>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(addressInfo));
+
+        _orderRepository.GetDailyOrderCountAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(0);
+
+        _orderRepository.AddAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<Order>());
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _mediator.Received(1).Publish(Arg.Any<INotification>(), Arg.Any<CancellationToken>());
     }
 }

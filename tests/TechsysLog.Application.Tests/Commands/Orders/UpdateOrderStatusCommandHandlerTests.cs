@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentAssertions;
+using MediatR;
 using NSubstitute;
 using TechsysLog.Application.Commands.Orders;
 using TechsysLog.Application.Mappings;
@@ -14,11 +15,13 @@ public class UpdateOrderStatusCommandHandlerTests
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IMapper _mapper;
+    private readonly IMediator _mediator;
     private readonly UpdateOrderStatusCommandHandler _handler;
 
     public UpdateOrderStatusCommandHandlerTests()
     {
         _orderRepository = Substitute.For<IOrderRepository>();
+        _mediator = Substitute.For<IMediator>();
 
         var mapperConfig = new MapperConfiguration(cfg =>
         {
@@ -26,7 +29,7 @@ public class UpdateOrderStatusCommandHandlerTests
         });
         _mapper = mapperConfig.CreateMapper();
 
-        _handler = new UpdateOrderStatusCommandHandler(_orderRepository, _mapper);
+        _handler = new UpdateOrderStatusCommandHandler(_orderRepository, _mapper, _mediator);
     }
 
     private static Order CreatePendingOrder()
@@ -176,5 +179,27 @@ public class UpdateOrderStatusCommandHandlerTests
             CancellationToken.None);
         result3.IsSuccess.Should().BeTrue();
         order.Status.Should().Be(OrderStatus.Delivered);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPublishOrderStatusChangedEvent()
+    {
+        // Arrange
+        var order = CreatePendingOrder();
+
+        var command = new UpdateOrderStatusCommand
+        {
+            OrderId = order.Id,
+            NewStatus = OrderStatus.Confirmed
+        };
+
+        _orderRepository.GetByIdAsync(order.Id, Arg.Any<CancellationToken>())
+            .Returns(order);
+
+        // Act
+        await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await _mediator.Received(1).Publish(Arg.Any<INotification>(), Arg.Any<CancellationToken>());
     }
 }

@@ -6,15 +6,15 @@ namespace TechsysLog.Domain.Common;
 /// </summary>
 public abstract class AggregateRoot : BaseEntity
 {
-    private readonly List<IDomainEvent> _domainEvents = new();
+    private readonly List<DomainEventBase> _domainEvents = new();
 
     /// <summary>
     /// Domain events raised by this aggregate.
     /// Events are dispatched after the aggregate is persisted.
     /// </summary>
-    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public IReadOnlyCollection<DomainEventBase> DomainEvents => _domainEvents.AsReadOnly();
 
-    protected void RaiseDomainEvent(IDomainEvent domainEvent)
+    protected void RaiseDomainEvent(DomainEventBase domainEvent)
     {
         _domainEvents.Add(domainEvent);
     }
@@ -23,21 +23,4 @@ public abstract class AggregateRoot : BaseEntity
     {
         _domainEvents.Clear();
     }
-}
-
-/// <summary>
-/// Marker interface for domain events.
-/// Domain events represent something that happened in the domain.
-/// </summary>
-public interface IDomainEvent
-{
-    DateTime OccurredAt { get; }
-}
-
-/// <summary>
-/// Base class for domain events with common properties.
-/// </summary>
-public abstract record DomainEventBase : IDomainEvent
-{
-    public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }

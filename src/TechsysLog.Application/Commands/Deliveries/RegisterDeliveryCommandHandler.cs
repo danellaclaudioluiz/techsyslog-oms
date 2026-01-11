@@ -1,9 +1,11 @@
 using AutoMapper;
+using MediatR;
 using TechsysLog.Application.Common;
 using TechsysLog.Application.DTOs;
 using TechsysLog.Domain.Common;
 using TechsysLog.Domain.Entities;
 using TechsysLog.Domain.Enums;
+using TechsysLog.Domain.Events;
 using TechsysLog.Domain.Interfaces;
 
 namespace TechsysLog.Application.Commands.Deliveries;
@@ -17,15 +19,18 @@ public sealed class RegisterDeliveryCommandHandler : ICommandHandler<RegisterDel
     private readonly IOrderRepository _orderRepository;
     private readonly IDeliveryRepository _deliveryRepository;
     private readonly IMapper _mapper;
+    private readonly IMediator _mediator;
 
     public RegisterDeliveryCommandHandler(
         IOrderRepository orderRepository,
         IDeliveryRepository deliveryRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IMediator mediator)
     {
         _orderRepository = orderRepository;
         _deliveryRepository = deliveryRepository;
         _mapper = mapper;
+        _mediator = mediator;
     }
 
     public async Task<Result<DeliveryDto>> Handle(RegisterDeliveryCommand request, CancellationToken cancellationToken)
@@ -44,17 +49,29 @@ public sealed class RegisterDeliveryCommandHandler : ICommandHandler<RegisterDel
         if (deliveryResult.IsFailure)
             return Result.Failure<DeliveryDto>(deliveryResult.Error!);
 
+        var delivery = deliveryResult.Value;
+
         // Update order status to Delivered
         var statusResult = order.UpdateStatus(OrderStatus.Delivered);
         if (statusResult.IsFailure)
             return Result.Failure<DeliveryDto>(statusResult.Error!);
 
         // Persist changes
-        await _deliveryRepository.AddAsync(deliveryResult.Value, cancellationToken);
+        await _deliveryRepository.AddAsync(delivery, cancellationToken);
         await _orderRepository.UpdateAsync(order, cancellationToken);
 
+        // Publish domain event for notifications
+        var orderDeliveredEvent = new OrderDeliveredEvent(
+            order.Id,
+            order.OrderNumber.Value,
+            order.UserId,
+            delivery.Id,
+            delivery.DeliveredAt);
+
+        await _mediator.Publish(orderDeliveredEvent, cancellationToken);
+
         // Map to DTO and return
-        var deliveryDto = _mapper.Map<DeliveryDto>(deliveryResult.Value);
+        var deliveryDto = _mapper.Map<DeliveryDto>(delivery);
         return Result.Success(deliveryDto);
     }
 }
