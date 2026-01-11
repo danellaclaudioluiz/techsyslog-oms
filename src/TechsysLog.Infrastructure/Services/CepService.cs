@@ -19,37 +19,35 @@ public class CepService : ICepService
         _httpClient.BaseAddress = new Uri("https://viacep.com.br/");
     }
 
-    public async Task<Result<Address>> GetAddressByCepAsync(Cep cep, CancellationToken cancellationToken = default)
+    public async Task<Result<CepAddressInfo>> GetAddressByCepAsync(Cep cep, CancellationToken cancellationToken = default)
     {
         try
         {
             var response = await _httpClient.GetAsync($"ws/{cep.Value}/json/", cancellationToken);
 
             if (!response.IsSuccessStatusCode)
-                return Result.Failure<Address>("Failed to fetch address from ViaCEP.");
+                return Result.Failure<CepAddressInfo>("Failed to fetch address from ViaCEP.");
 
             var viaCepResponse = await response.Content.ReadFromJsonAsync<ViaCepResponse>(cancellationToken: cancellationToken);
 
             if (viaCepResponse is null || viaCepResponse.Erro)
-                return Result.Failure<Address>("CEP not found.");
+                return Result.Failure<CepAddressInfo>("CEP not found.");
 
-            var addressResult = Address.Create(
-                cep,
+            var addressInfo = new CepAddressInfo(
                 viaCepResponse.Logradouro ?? string.Empty,
-                string.Empty, // Number will be provided by user
                 viaCepResponse.Bairro ?? string.Empty,
                 viaCepResponse.Localidade ?? string.Empty,
                 viaCepResponse.Uf ?? string.Empty);
 
-            return addressResult;
+            return Result.Success(addressInfo);
         }
         catch (HttpRequestException)
         {
-            return Result.Failure<Address>("Failed to connect to ViaCEP service.");
+            return Result.Failure<CepAddressInfo>("Failed to connect to ViaCEP service.");
         }
         catch (TaskCanceledException)
         {
-            return Result.Failure<Address>("Request to ViaCEP timed out.");
+            return Result.Failure<CepAddressInfo>("Request to ViaCEP timed out.");
         }
     }
 

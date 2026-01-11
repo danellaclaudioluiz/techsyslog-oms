@@ -36,19 +36,21 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
         if (cepResult.IsFailure)
             return Result.Failure<OrderDto>(cepResult.Error!);
 
-        // Fetch address from ViaCEP
-        var addressResult = await _cepService.GetAddressByCepAsync(cepResult.Value, cancellationToken);
-        if (addressResult.IsFailure)
-            return Result.Failure<OrderDto>(addressResult.Error!);
+        // Fetch address info from ViaCEP
+        var addressInfoResult = await _cepService.GetAddressByCepAsync(cepResult.Value, cancellationToken);
+        if (addressInfoResult.IsFailure)
+            return Result.Failure<OrderDto>(addressInfoResult.Error!);
 
-        // Create complete address with number and complement
+        var addressInfo = addressInfoResult.Value;
+
+        // Create complete address with number and complement from request
         var completeAddressResult = Address.Create(
             cepResult.Value,
-            addressResult.Value.Street,
+            addressInfo.Street,
             request.Number,
-            addressResult.Value.Neighborhood,
-            addressResult.Value.City,
-            addressResult.Value.State,
+            addressInfo.Neighborhood,
+            addressInfo.City,
+            addressInfo.State,
             request.Complement);
 
         if (completeAddressResult.IsFailure)

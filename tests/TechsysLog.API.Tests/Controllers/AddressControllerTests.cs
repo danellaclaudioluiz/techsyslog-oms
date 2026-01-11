@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using TechsysLog.API.Controllers;
 using TechsysLog.API.Models;
-using TechsysLog.Application.DTOs;
 using TechsysLog.Application.Interfaces;
 using TechsysLog.Domain.Common;
 using TechsysLog.Domain.ValueObjects;
@@ -37,31 +36,32 @@ public class AddressControllerTests
         };
     }
 
+    private static CepAddressInfo CreateTestAddressInfo()
+    {
+        return new CepAddressInfo(
+            "Avenida Paulista",
+            "Bela Vista",
+            "São Paulo",
+            "SP");
+    }
+
     [Fact]
     public async Task GetByCep_WithValidCep_ShouldReturnAddress()
     {
         // Arrange
         var cep = "01310100";
-        var cepVo = Cep.Create(cep).Value;
-        var address = Address.Create(
-            cepVo,
-            "Avenida Paulista",
-            "1000",
-            "Bela Vista",
-            "São Paulo",
-            "SP",
-            null).Value;
+        var addressInfo = CreateTestAddressInfo();
 
         _cepServiceMock
             .Setup(s => s.GetAddressByCepAsync(It.IsAny<Cep>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(address));
+            .ReturnsAsync(Result.Success(addressInfo));
 
         // Act
         var result = await _controller.GetByCep(cep, CancellationToken.None);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-        var response = okResult.Value.Should().BeOfType<ApiResponse<AddressDto>>().Subject;
+        var response = okResult.Value.Should().BeOfType<ApiResponse<CepAddressResponse>>().Subject;
         response.Success.Should().BeTrue();
         response.Data!.Street.Should().Be("Avenida Paulista");
         response.Data.City.Should().Be("São Paulo");
@@ -72,26 +72,18 @@ public class AddressControllerTests
     {
         // Arrange
         var formattedCep = "01310-100";
-        var cepVo = Cep.Create("01310100").Value;
-        var address = Address.Create(
-            cepVo,
-            "Avenida Paulista",
-            "1000",
-            "Bela Vista",
-            "São Paulo",
-            "SP",
-            null).Value;
+        var addressInfo = CreateTestAddressInfo();
 
         _cepServiceMock
             .Setup(s => s.GetAddressByCepAsync(It.IsAny<Cep>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(address));
+            .ReturnsAsync(Result.Success(addressInfo));
 
         // Act
         var result = await _controller.GetByCep(formattedCep, CancellationToken.None);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-        var response = okResult.Value.Should().BeOfType<ApiResponse<AddressDto>>().Subject;
+        var response = okResult.Value.Should().BeOfType<ApiResponse<CepAddressResponse>>().Subject;
         response.Success.Should().BeTrue();
     }
 
@@ -132,7 +124,7 @@ public class AddressControllerTests
 
         _cepServiceMock
             .Setup(s => s.GetAddressByCepAsync(It.IsAny<Cep>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Failure<Address>("CEP not found."));
+            .ReturnsAsync(Result.Failure<CepAddressInfo>("CEP not found."));
 
         // Act
         var result = await _controller.GetByCep(cep, CancellationToken.None);
@@ -146,61 +138,42 @@ public class AddressControllerTests
     {
         // Arrange
         var cepWithLetters = "01ABC310100"; // Should become 01310100
-
-        var cepVo = Cep.Create("01310100").Value;
-        var address = Address.Create(
-            cepVo,
-            "Avenida Paulista",
-            "1000",
-            "Bela Vista",
-            "São Paulo",
-            "SP",
-            null).Value;
+        var addressInfo = CreateTestAddressInfo();
 
         _cepServiceMock
             .Setup(s => s.GetAddressByCepAsync(It.IsAny<Cep>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(address));
+            .ReturnsAsync(Result.Success(addressInfo));
 
         // Act
         var result = await _controller.GetByCep(cepWithLetters, CancellationToken.None);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-        var response = okResult.Value.Should().BeOfType<ApiResponse<AddressDto>>().Subject;
+        var response = okResult.Value.Should().BeOfType<ApiResponse<CepAddressResponse>>().Subject;
         response.Success.Should().BeTrue();
     }
 
     [Fact]
-    public async Task GetByCep_ShouldReturnCorrectAddressDto()
+    public async Task GetByCep_ShouldReturnCorrectResponse()
     {
         // Arrange
         var cep = "01310100";
-        var cepVo = Cep.Create(cep).Value;
-        var address = Address.Create(
-            cepVo,
-            "Avenida Paulista",
-            "1578",
-            "Bela Vista",
-            "São Paulo",
-            "SP",
-            "Apto 101").Value;
+        var addressInfo = CreateTestAddressInfo();
 
         _cepServiceMock
             .Setup(s => s.GetAddressByCepAsync(It.IsAny<Cep>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success(address));
+            .ReturnsAsync(Result.Success(addressInfo));
 
         // Act
         var result = await _controller.GetByCep(cep, CancellationToken.None);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
-        var response = okResult.Value.Should().BeOfType<ApiResponse<AddressDto>>().Subject;
+        var response = okResult.Value.Should().BeOfType<ApiResponse<CepAddressResponse>>().Subject;
         response.Data!.Cep.Should().Be("01310100");
         response.Data.Street.Should().Be("Avenida Paulista");
-        response.Data.Number.Should().Be("1578");
         response.Data.Neighborhood.Should().Be("Bela Vista");
         response.Data.City.Should().Be("São Paulo");
         response.Data.State.Should().Be("SP");
-        response.Data.Complement.Should().Be("Apto 101");
     }
 }

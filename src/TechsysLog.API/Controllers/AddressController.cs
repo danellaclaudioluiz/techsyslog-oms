@@ -24,7 +24,7 @@ public class AddressController : BaseController
     /// Get address by CEP.
     /// </summary>
     [HttpGet("{cep}")]
-    [ProducesResponseType(typeof(ApiResponse<AddressDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CepAddressResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByCep(string cep, CancellationToken cancellationToken)
@@ -45,19 +45,29 @@ public class AddressController : BaseController
         if (result.IsFailure)
             return NotFoundResponse(result.Error ?? "CEP not found.");
 
-        var address = result.Value;
+        var addressInfo = result.Value;
 
-        var dto = new AddressDto
+        var response = new CepAddressResponse
         {
-            Cep = address.Cep.Value,
-            Street = address.Street,
-            Number = address.Number,
-            Neighborhood = address.Neighborhood,
-            City = address.City,
-            State = address.State,
-            Complement = address.Complement
+            Cep = cleanCep,
+            Street = addressInfo.Street,
+            Neighborhood = addressInfo.Neighborhood,
+            City = addressInfo.City,
+            State = addressInfo.State
         };
 
-        return Ok(ApiResponse<AddressDto>.Ok(dto));
+        return Ok(ApiResponse<CepAddressResponse>.Ok(response));
     }
+}
+
+/// <summary>
+/// CEP address response model.
+/// </summary>
+public class CepAddressResponse
+{
+    public string Cep { get; set; } = null!;
+    public string Street { get; set; } = null!;
+    public string Neighborhood { get; set; } = null!;
+    public string City { get; set; } = null!;
+    public string State { get; set; } = null!;
 }

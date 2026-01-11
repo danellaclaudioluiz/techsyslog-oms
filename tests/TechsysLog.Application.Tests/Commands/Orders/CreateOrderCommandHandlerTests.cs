@@ -36,16 +36,13 @@ public class CreateOrderCommandHandlerTests
             _mapper);
     }
 
-    private static Address CreateTestAddress()
+    private static CepAddressInfo CreateTestAddressInfo()
     {
-        var cep = Cep.Create("01310100").Value;
-        return Address.Create(
-            cep,
+        return new CepAddressInfo(
             "Avenida Paulista",
-            "1000",
             "Bela Vista",
             "São Paulo",
-            "SP").Value;
+            "SP");
     }
 
     [Fact]
@@ -62,10 +59,10 @@ public class CreateOrderCommandHandlerTests
             UserId = Guid.NewGuid()
         };
 
-        var address = CreateTestAddress();
+        var addressInfo = CreateTestAddressInfo();
 
         _cepService.GetAddressByCepAsync(Arg.Any<Cep>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Success(address));
+            .Returns(Result.Success(addressInfo));
 
         _orderRepository.GetDailyOrderCountAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(0);
@@ -123,7 +120,7 @@ public class CreateOrderCommandHandlerTests
         };
 
         _cepService.GetAddressByCepAsync(Arg.Any<Cep>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Failure<Address>("CEP not found."));
+            .Returns(Result.Failure<CepAddressInfo>("CEP not found."));
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -148,10 +145,10 @@ public class CreateOrderCommandHandlerTests
             UserId = Guid.NewGuid()
         };
 
-        var address = CreateTestAddress();
+        var addressInfo = CreateTestAddressInfo();
 
         _cepService.GetAddressByCepAsync(Arg.Any<Cep>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Success(address));
+            .Returns(Result.Success(addressInfo));
 
         _orderRepository.GetDailyOrderCountAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(5);
@@ -180,10 +177,10 @@ public class CreateOrderCommandHandlerTests
             UserId = Guid.NewGuid()
         };
 
-        var address = CreateTestAddress();
+        var addressInfo = CreateTestAddressInfo();
 
         _cepService.GetAddressByCepAsync(Arg.Any<Cep>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Success(address));
+            .Returns(Result.Success(addressInfo));
 
         _orderRepository.GetDailyOrderCountAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(0);
@@ -209,10 +206,10 @@ public class CreateOrderCommandHandlerTests
             UserId = Guid.Empty
         };
 
-        var address = CreateTestAddress();
+        var addressInfo = CreateTestAddressInfo();
 
         _cepService.GetAddressByCepAsync(Arg.Any<Cep>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Success(address));
+            .Returns(Result.Success(addressInfo));
 
         _orderRepository.GetDailyOrderCountAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(0);
