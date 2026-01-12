@@ -4,11 +4,7 @@
 
 ### 1. Banco de Dados (MongoDB)
 ```bash
-docker run -d \
-  --name mongodb \
-  -p 27017:27017 \
-  -v mongodb_data:/data/db \
-  mongo
+docker run -d --name mongodb -p 27017:27017 -v mongodb_data:/data/db mongo
 ```
 
 ### 2. Backend API (.NET)
