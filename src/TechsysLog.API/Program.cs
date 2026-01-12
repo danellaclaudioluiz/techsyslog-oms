@@ -7,14 +7,13 @@ using TechsysLog.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
+// Configure Serilog from appsettings + Seq
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
     .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .CreateLogger();
-
-builder.Host.UseSerilog();
+    .Enrich.WithProperty("Application", "TechsysLog.API")
+    .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName));
 
 // Add services
 builder.Services.AddApplication();
@@ -83,9 +82,20 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Serilog request logging - captura todas as requisições HTTP
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+        diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+        diagnosticContext.Set("UserId", httpContext.User?.FindFirst("sub")?.Value ?? "anonymous");
+        diagnosticContext.Set("ClientIP", httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+    };
+});
+
 // Configure middleware pipeline
 app.UseMiddleware<ExceptionMiddleware>();
-app.UseMiddleware<RequestLoggingMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -99,9 +109,21 @@ app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 
 // Log startup
-Log.Information("TechsysLog API started successfully");
+Log.Information("TechsysLog API started successfully on {Environment}", 
+    app.Environment.EnvironmentName);
 
-app.Run();
+try
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 // Make Program class accessible for integration tests
 public partial class Program { }

@@ -59,8 +59,21 @@ services:
     networks:
       - techsyslog-network
 
+  seq:
+    image: datalust/seq:latest
+    container_name: techsyslog-seq
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+    ports:
+      - "5341:5341"
+      - "8081:80"
+    networks:
+      - techsyslog-network
+
 volumes:
   mongodb_data:
+  seq-data:
 
 networks:
   techsyslog-network:
