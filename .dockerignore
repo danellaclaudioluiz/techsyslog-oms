@@ -1,0 +1,25 @@
+# Git
+.git
+.gitignore
+
+# Node
+**/node_modules
+**/npm-debug.log
+
+# .NET
+**/bin
+**/obj
+**/.vs
+**/*.user
+
+# Build outputs
+**/dist
+**/publish
+
+# IDE
+.idea
+.vscode
+
+# Misc
+**/*.md
+**/LICENSE

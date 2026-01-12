@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: techsyslog-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: techsyslog
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - techsyslog-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: techsyslog-api
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - MongoDb__ConnectionString=mongodb://admin:admin123@mongodb:27017/?authSource=admin
+      - MongoDb__DatabaseName=techsyslog
+      - Jwt__Secret=TechsysLogSuperSecretKeyForJwtTokenGeneration2024!@#$%
+      - Jwt__Issuer=TechsysLog
+      - Jwt__Audience=TechsysLogUsers
+      - Jwt__ExpirationInHours=24
+    ports:
+      - "5000:8080"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - techsyslog-network
+
+  # Frontend Web
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    container_name: techsyslog-web
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+    networks:
+      - techsyslog-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  techsyslog-network:
+    driver: bridge

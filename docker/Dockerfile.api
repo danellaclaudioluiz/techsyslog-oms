@@ -1,0 +1,38 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy solution and project files
+COPY *.sln .
+COPY src/TechsysLog.Domain/*.csproj ./src/TechsysLog.Domain/
+COPY src/TechsysLog.Application/*.csproj ./src/TechsysLog.Application/
+COPY src/TechsysLog.Infrastructure/*.csproj ./src/TechsysLog.Infrastructure/
+COPY src/TechsysLog.API/*.csproj ./src/TechsysLog.API/
+COPY tests/TechsysLog.Domain.Tests/*.csproj ./tests/TechsysLog.Domain.Tests/
+COPY tests/TechsysLog.Application.Tests/*.csproj ./tests/TechsysLog.Application.Tests/
+COPY tests/TechsysLog.Infrastructure.Tests/*.csproj ./tests/TechsysLog.Infrastructure.Tests/
+COPY tests/TechsysLog.Integration.Tests/*.csproj ./tests/TechsysLog.Integration.Tests/
+COPY tests/TechsysLog.API.Tests/*.csproj ./tests/TechsysLog.API.Tests/
+
+# Restore dependencies
+RUN dotnet restore
+
+# Copy source code
+COPY src/ ./src/
+
+# Build and publish
+WORKDIR /src/src/TechsysLog.API
+RUN dotnet publish -c Release -o /app/publish --no-restore
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+EXPOSE 8080
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "TechsysLog.API.dll"]
