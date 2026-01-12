@@ -419,15 +419,15 @@ export class RegisterPageComponent {
       return;
     }
 
-    const { name, email, password, role } = this.form.value;
+    const userData = this.form.value;
 
-    this.authService.register({ name, email, password, role }).subscribe({
+    this.authService.register(userData).subscribe({
       next: () => {
         this.toastService.success('Conta criada com sucesso!');
         this.router.navigate(['/dashboard']);
       },
       error: (error) => {
-        // Error is already handled by the service
+        this.toastService.error(error.message || 'Erro ao criar conta');
       },
     });
   }

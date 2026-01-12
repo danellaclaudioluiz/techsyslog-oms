@@ -58,7 +58,7 @@ import { InputComponent, ButtonComponent, IconComponent } from '@shared/componen
           [error]="getError('password')"
           [required]="true"
         />
-        
+
         <app-button
           type="submit"
           [fullWidth]="true"
@@ -247,7 +247,7 @@ export class LoginPageComponent {
         this.router.navigate(['/dashboard']);
       },
       error: (error) => {
-        // Error is already handled by the service
+        this.toastService.error(error.message || 'Erro ao fazer login');
       },
     });
   }

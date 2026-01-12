@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { isPlatformBrowser } from '@angular/common';
-import { Observable, tap, catchError, throwError, of } from 'rxjs';
+import { Observable, tap, catchError, throwError, finalize } from 'rxjs';
 import { environment } from '@env/environment';
 import {
   User,
@@ -92,7 +92,7 @@ export class AuthService {
         this._error.set(message);
         return throwError(() => new Error(message));
       }),
-      tap(() => this._isLoading.set(false))
+      finalize(() => this._isLoading.set(false))
     );
   }
 
@@ -111,7 +111,7 @@ export class AuthService {
         this._error.set(message);
         return throwError(() => new Error(message));
       }),
-      tap(() => this._isLoading.set(false))
+      finalize(() => this._isLoading.set(false))
     );
   }
 
@@ -163,7 +163,6 @@ export class AuthService {
     const userRole = this._user()?.role;
     if (!userRole) return false;
     
-    // Verifica se o role do usuário está na lista (como string ou número)
     return roles.some(role => {
       if (typeof role === 'number' && typeof userRole === 'number') {
         return role === userRole;
@@ -171,7 +170,6 @@ export class AuthService {
       if (typeof role === 'string' && typeof userRole === 'string') {
         return role === userRole;
       }
-      // Mapeia números para strings
       const roleMap: Record<number, string> = { 1: 'Customer', 2: 'Operator', 3: 'Admin' };
       if (typeof role === 'string' && typeof userRole === 'number') {
         return role === roleMap[userRole];
