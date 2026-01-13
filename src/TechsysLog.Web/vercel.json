@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build -- --configuration=production",
+  "outputDirectory": "dist/techsyslog-web/browser",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
